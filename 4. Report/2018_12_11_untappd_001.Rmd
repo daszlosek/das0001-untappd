@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+install.packages("jsonlite")
+
+library("dplyr")
+library(httr)
+library(jsonlite)
+```
+
+```{r}
+
+endpoint <- "https://api.untappd.com/v4"
+
+endpoint2 <- "https://untappd.com/oauth/authenticate/?client_id=CLIENTID&response_type=code&redirect_url=REDIRECT_URL"
+
+endpoint_auth <- "https://untappd.com/oauth/authenticate/"
+req <- GET(url = endpoint_auth)
+
+
+# if code 200 = success
+status_code(req)
+
+
+req_content <- content(req)
+
+req_content
+```
+
+
+
+```{r}
+req <- GET("https://api.socialbakers.com/0/facebook/profiles", 
+       authenticate("token", "secret", type = "basic"))
+stop_for_status(req)
+content(req)
+
+
+```
+
+```{r}
+# Save username as variable
+username <- 'tclavelle'
+
+# Save base enpoint as variable
+url_git <- 'https://api.github.com/'
+
+# Construct API request
+repos <- GET(url = paste0(url_git,'users/',username,'/repos'))
+
+# Examine response components
+names(repos)
+
+# Process API request content 
+repo_content <- content(repos)
+
+
+# Apply function across all list elements to extract the name and address of each repo
+repo_df <- lapply(repo_content, function(x) {
+  df <- data_frame(repo        = x$name,
+                   address     = x$html_url,
+                   commits     = x$git_commits_url)
+}) %>% bind_rows()
+
+# Repo URL
+url_repo <- repo_df$commits[repo_df$repo=='sfg-aqua']
+
+# clean URL for proper format...
+url_repo <- gsub(url_repo, pattern = 'git/commits{/sha}', replacement = 'commits', fixed = TRUE)
+
+# API request
+commits <- GET(url = url_repo)
+
+# List elements
+names(commits)
+```
+
+

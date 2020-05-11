@@ -1,0 +1,121 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+#install.packages("data.table")
+
+#rm(list=ls())
+
+library("dplyr")
+library(httr)
+library(jsonlite)
+
+library(data.table)
+library("ggplot2")
+library("rms")
+library("Hmisc")
+```
+
+
+
+```{r}
+raw <- fread(here::here("2. Data","untappd_data.csv")) %>% filter(!is.na(rating_score))
+```
+
+
+```{r}
+
+dc1 <- raw %>% dplyr::select(c(beer_name,brewery_city,brewery_country,brewery_state,brewery_id,beer_type,beer_abv, beer_ibu,venue_city,venue_state,rating_score,created_at)) %>% mutate(
+               beer_type_main = gsub("-","", gsub( " .*$", "-", beer_type))) %>% filter(is.na(rating_score) != T)
+
+
+head(dc1)
+```
+
+```{r}
+dc2 <- dc1 %>% mutate(rating_score2 = round(rating_score),
+                      rating_score2 = factor(rating_score2, levels = c(0,1,2,3,4,5)))
+```
+
+
+
+
+```{r}
+dc2_meanAbv <- dc2 %>% group_by(rating_score2) %>% summarise(mean_abv = mean(beer_abv, na.rm = T)) %>% ungroup()
+
+
+dc2_meanIbu <- dc2 %>% group_by(rating_score2) %>% summarise(mean_ibu = mean(beer_ibu, na.rm = T)) %>% ungroup()
+
+```
+
+
+
+```{r}
+
+
+
+ggplot(dc2_meanAbv, aes(x = rating_score2, y = mean_abv)) +
+       geom_point() +
+       geom_smooth(method = "loess")
+
+
+
+ggplot(dc2_meanIbu, aes(x = rating_score2, y = mean_ibu)) +
+       geom_point() +
+       geom_smooth(method = "loess")
+
+?ols
+```
+
+
+
+
+```{r}
+dc2 <- dc1 %>% group_by(beer_type_main) %>% summarise(n = n(),
+                                                      mean = mean(rating_score),
+                                                      min = min(rating_score),
+                                                      max = max(rating_score),
+                                                      range = max - min) %>%
+               filter(n >1)
+
+dc2 <- dc1 %>% group_by(beer_type) %>% summarise(n = n(),
+                                                      mean = mean(rating_score),
+                                                      min = min(rating_score),
+                                                      max = max(rating_score),
+                                                      range = max - min) %>% 
+              filter(n > 1)
+
+head(dc1)
+
+table(dc1$beer_type_main)
+
+
+```
+
+
+
+```{r}
+# Multiple Linear Regression Example 
+fit <- lm(rating_score ~ beer_type_main + beer_abv + beer_ibu, data=dc1)
+summary(fit) # show results
+
+# Other useful functions 
+coefficients(fit) # model coefficients
+confint(fit, level=0.95) # CIs for model parameters 
+fitted(fit) # predicted values
+residuals(fit) # residuals
+anova(fit) # anova table 
+vcov(fit) # covariance matrix for model parameters 
+influence(fit) # regression diagnostics
+```
+
+```{r}
+# diagnostic plots 
+layout(matrix(c(1,2,3,4),2,2)) # optional 4 graphs/page 
+plot(fit)
+```
+
